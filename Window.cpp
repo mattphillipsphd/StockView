@@ -11,7 +11,7 @@ Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), netwo
 
     scene = new QGraphicsScene(this);
     ui->TickerSymbols_LineEdit->setText("VUG");
-    ui->FileSelect_LineEdit->setText("//wsl.localhost/Ubuntu/home/matt/SimpleAnalysis.py");
+    ui->FileSelect_LineEdit->setText("C:/Users/mattp/Documents/Qt/Projects/StockView/python/SimpleAnalysis.py");
     ui->InputArguments_LineEdit->setText("VUG");
 }
 
@@ -22,7 +22,7 @@ Window::~Window()
 
 void Window::on_FileSelector_Button_clicked()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, "Open File", "//wsl.localhost/Ubuntu/home/matt", "Python File (*.py)");
+    QString filePath = QFileDialog::getOpenFileName(this, "Open File", "C:/Users/mattp/Documents/Qt/Projects/StockView/python", "Python File (*.py)");
 
     if (!filePath.isEmpty())
         ui->FileSelect_LineEdit->setText(filePath);
