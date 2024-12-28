@@ -3,94 +3,166 @@
 
 #include <QString>
 #include <QMessageBox>
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#define NOGDI
-#define NOUSER
-#include <windows.h>
-#define popen _popen
-#define pclose _pclose
-#define WEXITSTATUS(status) ((status) & 0xFF)
-#else
-#include <unistd.h>
-#endif
+#include <QProcess>
+#include <QDir>
+#include <QStandardPaths>
+#include <QDebug>
+#include <QFileInfo>
+#include <QRegularExpression>
+#include <QFile>
+#include <QTextStream>
 
-class PythonLauncher
+class PythonLauncher : public QObject
 {
+    Q_OBJECT
 
 public:
 
-    PythonLauncher(const PythonLauncher&) = delete;
-    PythonLauncher(PythonLauncher&&) = delete;
-    PythonLauncher& operator=(const PythonLauncher&) = delete;
-    PythonLauncher& operator=(PythonLauncher&&) = delete;
-
-    static int Launch(const QString& filePath, const QList<QString>& arguments, QString& outputString)
+    /**
+     * @brief Run the Python script. If a virtual environment has been created,
+     *        the script will run using that environment's Python.
+     * @return The exit code of the Python process.
+     */
+    int run()
     {
-        QString command = "python3 ";
-        command += filePath;
+        if (pythonExecutable.isEmpty())
+            pythonExecutable = QStringLiteral("python");
 
-        for (QString argument : arguments)
-            command += " \"" + EscapeArgument(argument) + "\"";
+        QProcess pythonProcess;
 
-        try
+        pythonProcess.setProcessChannelMode(QProcess::MergedChannels);
+
+        QStringList args;
+
+        args << filePath;
+        args << arguments;
+
+        pythonProcess.start(pythonExecutable, args);
+
+        if (!pythonProcess.waitForStarted())
         {
-            QString output = ExecuteCommand(command);
-
-            outputString = output;
+            outputString = QStringLiteral("Failed to start the python process.");
+            return -1;
         }
-        catch (const std::runtime_error& e)
+
+        pythonProcess.waitForFinished();
+
+        outputString = pythonProcess.readAll();
+
+        return pythonProcess.exitCode();
+    }
+
+    /**
+     * @brief Create a virtual environment in the given directory and optionally
+     *        install the specified Python modules.
+     * @param directory The directory where the new venv will be created.
+     * @param modules   A list of modules to install via pip (e.g. {"numpy", "pandas"}).
+     *
+     * @note Must be called before run().
+     */
+    void addVirtualEnvironment(const QString& directory, const QList<QString>& modules = {})
+    {
+        if (directory.isEmpty())
+            return;
+
         {
-            QMessageBox::information(nullptr, "Error!", e.what());
-            return 1;
+            QProcess venvProcess;
+            QStringList args;
+
+            args << QStringLiteral("-m")
+                 << QStringLiteral("venv")
+                 << directory;
+
+            venvProcess.start(QStringLiteral("python"), args);
+
+            if (!venvProcess.waitForStarted())
+            {
+                qWarning() << "Failed to start python -m venv process.";
+                return;
+            }
+
+            venvProcess.waitForFinished();
+
+            if (venvProcess.exitCode() != 0)
+            {
+                qWarning() << "Creating virtual environment failed:" << venvProcess.readAll();
+                return;
+            }
         }
 
-        return 0;
+#if defined(Q_OS_WIN)
+        pythonExecutable = QDir(directory).filePath("Scripts/python.exe");
+#else
+        pythonExecutable = QDir(directory).filePath("bin/python");
+#endif
+
+        if (!modules.isEmpty())
+        {
+            QProcess installProcess;
+            QStringList installArgs;
+
+            installArgs << QStringLiteral("-m")
+                        << QStringLiteral("pip")
+                        << QStringLiteral("install");
+
+            installArgs << modules;
+
+            installProcess.start(pythonExecutable, installArgs);
+
+            if (!installProcess.waitForStarted())
+            {
+                qWarning() << "Failed to start pip install process.";
+                return;
+            }
+
+            installProcess.waitForFinished();
+
+            if (installProcess.exitCode() != 0)
+            {
+                qWarning() << "Installing modules failed:" << installProcess.readAll();
+                return;
+            }
+        }
+    }
+
+    /**
+     * @brief Retrieve the combined standard output and standard error from
+     *        the most recent Python run.
+     */
+    QString getOutput() const
+    {
+        return outputString;
+    }
+
+    /**
+     * @brief Create a shared instance of PythonLauncher. This factory method
+     *        takes the path to the .py file and the arguments that will be
+     *        passed to the script.
+     * @param filePath  The Python script to run (absolute or relative path).
+     * @param arguments A list of arguments for the Python script.
+     *
+     * @return A shared pointer to a new PythonLauncher.
+     */
+    static QSharedPointer<PythonLauncher> create(const QString& filePath, const QList<QString>& arguments)
+    {
+        QSharedPointer<PythonLauncher> result(new PythonLauncher);
+
+        result->filePath = filePath;
+        result->arguments = arguments;
+
+        return result;
     }
 
 private:
 
-    static QString EscapeArgument(const QString& argument)
-    {
-        QString result;
-
-        for (QChar c : argument)
-        {
-            if (c == '\"')
-                result += "\\\"";
-            else
-                result += c;
-        }
-
-        return result;
-    }
-
-    static QString ExecuteCommand(const QString& command)
-    {
-        QString result;
-        char buffer[128];
-
-        FILE* pipe = popen(command.toStdString().c_str(), "r");
-
-        if (!pipe)
-            QMessageBox::information(nullptr, "Error!", "Failed to open pipe for command: " + command);
-
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
-            result += buffer;
-
-        int status = pclose(pipe);
-
-        if (status == -1)
-            QMessageBox::information(nullptr, "Error!", "Failed to close pipe");
-
-        else if (WEXITSTATUS(status) != 0)
-            QMessageBox::information(nullptr, "Error!", QString("Python script exited with status: ") + (QChar)WEXITSTATUS(status));
-
-        return result;
-    }
-
     PythonLauncher() = default;
 
+    QString filePath;
+    QList<QString> arguments;
+    QString outputString;
+
+    QString pythonExecutable;
 };
+
 
 #endif // PYTHONLAUNCHER_HPP

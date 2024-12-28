@@ -18,6 +18,7 @@
 #include <QVector>
 #include <QPointF>
 #include <QDebug>
+#include <QTemporaryFile>
 
 QT_BEGIN_NAMESPACE
 
@@ -73,6 +74,36 @@ private slots:
 
         // Update the chart with both data points and labels
         ui->StockView_Chart->setData(result.points, result.labels);
+
+        // Create temporary file
+        QTemporaryFile tempFile;
+        tempFile.setAutoRemove(false); // Don't delete automatically
+
+        if (!tempFile.open())
+        {
+            qDebug() << "Failed to create temporary file";
+            return;
+        }
+
+        // Write data to file in CSV format
+        QTextStream stream(&tempFile);
+        stream << "timestamp,price\n"; // Header
+
+        for (const QPointF& point : result.points)
+        {
+            stream << QString::number(point.x()) << ","
+                   << QString::number(point.y()) << "\n";
+        }
+
+        tempFilePath = tempFile.fileName();
+        tempFile.close();
+
+        // Update the chart
+        ui->StockView_Chart->setData(result.points, result.labels);
+
+        qDebug() << tempFilePath;
+       // Clean up temp file after analysis
+//        QFile::remove(tempFilePath);
     }
 
     void on_GraphStocks_Button_clicked();
@@ -82,6 +113,7 @@ private:
     Ui::Window* ui;
     QNetworkAccessManager* networkManager;
     QGraphicsScene* scene;
+    QString tempFilePath;
 
     void fetchStockData(const QString &symbol)
     {

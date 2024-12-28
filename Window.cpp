@@ -10,6 +10,9 @@ Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), netwo
     ui->setupUi(this);
 
     scene = new QGraphicsScene(this);
+    ui->TickerSymbols_LineEdit->setText("VUG");
+    ui->FileSelect_LineEdit->setText("//wsl.localhost/Ubuntu/home/matt/SimpleAnalysis.py");
+    ui->InputArguments_LineEdit->setText("VUG");
 }
 
 Window::~Window()
@@ -27,17 +30,37 @@ void Window::on_FileSelector_Button_clicked()
 
 void Window::on_Run_Button_clicked()
 {
-    QString outputString;
+    QString scriptPath = ui->FileSelect_LineEdit->text();
 
-    PythonLauncher::Launch(ui->FileSelect_LineEdit->text(), ui->InputArguments_LineEdit->text().split(" "), outputString);
+    QStringList arguments;
+
+    arguments << tempFilePath;
+    arguments << ui->InputArguments_LineEdit->text().split(' ');
+
+    QSharedPointer<PythonLauncher> launcher = PythonLauncher::create(scriptPath, arguments);
+
+    QString environmentPath = "C:/Users/mattp/Documents/StockView/StockAnalyzerEnvironment/";
+
+    launcher->addVirtualEnvironment(environmentPath, {"numpy", "pandas"});
+
+    int exitCode = launcher->run();
+
+    QString outputString = launcher->getOutput();
 
     ui->ConsoleOutput_TextBrowser->setText(outputString);
+
+    if (exitCode != 0)
+    {
+        QMessageBox::warning(this, "Script Error",
+                             QString("Python script exited with code %1.").arg(exitCode));
+    }
 }
 
 void Window::on_GraphStocks_Button_clicked()
 {
-    connect(networkManager, &QNetworkAccessManager::finished, this, &Window::OnDataReceived);
+    connect(networkManager, &QNetworkAccessManager::finished,
+            this, &Window::OnDataReceived);
+
     const auto stock = ui->TickerSymbols_LineEdit->text();
     fetchStockData(stock);
 }
-
