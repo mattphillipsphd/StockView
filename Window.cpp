@@ -1,3 +1,5 @@
+#include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileDialog>
 #include <QGraphicsScene>
@@ -13,6 +15,7 @@ Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), netwo
     ui->TickerSymbols_LineEdit->setText("VUG");
     ui->FileSelect_LineEdit->setText("C:/Users/mattp/Documents/Qt/Projects/StockView/python/SimpleAnalysis.py");
     ui->InputArguments_LineEdit->setText("VUG");
+    deleteTempFiles();
 }
 
 Window::~Window()
@@ -63,4 +66,35 @@ void Window::on_GraphStocks_Button_clicked()
 
     const auto stock = ui->TickerSymbols_LineEdit->text();
     fetchStockData(stock);
+}
+
+void Window::deleteTempFiles() const
+{
+    QTemporaryFile tempFile;
+    tempFile.setAutoRemove(false); // Don't delete automatically
+    QTextStream stream(&tempFile);
+    stream << "test\n";
+    QString tempName = tempFile.fileName();
+    tempFile.close();
+    QString parentDir = QFileInfo{tempName}.dir().absolutePath();
+
+    QDir directory(parentDir);
+    if (!directory.exists()) {
+        return;
+    }
+
+    QDirIterator it(parentDir, QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+
+    size_t ct = 0;
+    while (it.hasNext()) {
+        QString filePath = it.next();
+        QFileInfo fileInfo(filePath);
+        if (fileInfo.fileName().contains("StockView", Qt::CaseInsensitive)) {
+            QFile file(filePath);
+            file.remove();
+            ++ct;
+        }
+    }
+
+    qDebug() << "Temporary files: " << ct << " removed from " << parentDir;
 }

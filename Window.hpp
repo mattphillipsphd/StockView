@@ -45,6 +45,8 @@ public:
         QMap<QString, QString> labels;
     };
 
+    void deleteTempFiles() const;
+
 private slots:
 
     void on_FileSelector_Button_clicked();
@@ -101,8 +103,7 @@ private slots:
         // Update the chart
         ui->StockView_Chart->setData(result.points, result.labels);
 
-        qDebug() << tempFilePath;
-       // Clean up temp file after analysis
+        ui->DataFile_LineEdit->setText( "Current Data File: " + tempFilePath );
 //        QFile::remove(tempFilePath);
     }
 

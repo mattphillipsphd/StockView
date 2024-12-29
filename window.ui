@@ -16,7 +16,7 @@
   <widget class="QWidget" name="Frame">
    <layout class="QHBoxLayout" name="horizontalLayout_3">
     <item>
-     <layout class="QVBoxLayout" name="Grapher_Layout" stretch="1,0">
+     <layout class="QVBoxLayout" name="Grapher_Layout" stretch="1,0,0">
       <item>
        <widget class="ChartWidget" name="StockView_Chart" native="true"/>
       </item>
@@ -40,6 +40,16 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="DataFile_LineEdit">
+        <property name="text">
+         <string>Current Data File:</string>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
