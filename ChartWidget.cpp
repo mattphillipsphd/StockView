@@ -3,6 +3,7 @@
 #include <QBrush>
 #include <QFontMetrics>
 #include <QDebug>
+#include <QDateTime>
 #include "ChartWidget.hpp"
 
 ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent)
@@ -13,8 +14,8 @@ ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent)
 void ChartWidget::setData(const QVector<QPointF>& data, const QMap<QString, QString>& labelData)
 {
     this->data = data;
-    setAxisTitles( labelData.value("x_axis"), labelData.value("y_axis") );
-    setLegendData( labelData.value("legend") );
+    setAxisTitles(labelData.value("x_axis"), labelData.value("y_axis"));
+    setLegendData(labelData.value("legend"));
     update();
 }
 
@@ -44,11 +45,11 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // Increased margins to accommodate axis labels
-    double leftMargin = 70;   // More space for y-axis labels
+    // Adjusted margins for tighter layout
+    double leftMargin = 70;     // Space for y-axis labels
     double rightMargin = 50;
-    double topMargin = 50;    // Space for title
-    double bottomMargin = 70; // More space for x-axis labels
+    double topMargin = 50;      // Space for title
+    double bottomMargin = 130;  // Reduced to eliminate excess whitespace
 
     double width = this->width() - (leftMargin + rightMargin);
     double height = this->height() - (topMargin + bottomMargin);
@@ -56,7 +57,7 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     if (width <= 0 || height <= 0 || data.isEmpty())
         return;
 
-    // Draw background (optional)
+    // Draw background
     painter.fillRect(rect(), Qt::white);
 
     // Calculate data ranges
@@ -90,7 +91,7 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     painter.drawLine(leftMargin, topMargin + height, leftMargin + width, topMargin + height);  // X axis
     painter.drawLine(leftMargin, topMargin, leftMargin, topMargin + height);                   // Y axis
 
-    // Draw grid (optional)
+    // Draw grid
     QPen gridPen(Qt::lightGray, 1, Qt::DotLine);
     painter.setPen(gridPen);
 
@@ -118,13 +119,27 @@ void ChartWidget::paintEvent(QPaintEvent* event)
         painter.setPen(tickPen);
         painter.drawLine(x, topMargin + height - 5, x, topMargin + height + 5);
 
-        double value = minX + i * (maxX - minX) / numXTicks;
-        QString label = QString::number(value, 'f', 1);
-        int labelWidth = fm.horizontalAdvance(label);
-        painter.drawText(x - labelWidth / 2, topMargin + height + 20, label);
+        // Convert UNIX timestamp to date string
+        double timestamp = minX + i * (maxX - minX) / numXTicks;
+        QDateTime dateTime;
+        dateTime.setSecsSinceEpoch(static_cast<qint64>(timestamp));
+        QString label = dateTime.toString("yyyy-MM-dd");
+
+        // Save current painter state
+        painter.save();
+
+        // Position labels closer to the axis while still avoiding overlap
+        painter.translate(x, topMargin + height + 75);
+        painter.rotate(-90);
+
+        // Draw rotated text
+        painter.drawText(0, 0, label);
+
+        // Restore painter state
+        painter.restore();
     }
 
-    // Y-axis ticks and labels
+    // Y-axis ticks and labels (unchanged)
     for (int i = 0; i <= numYTicks; ++i)
     {
         double y = topMargin + height - i * (height / numYTicks);
@@ -150,7 +165,7 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     painter.restore();
 
     painter.drawText(leftMargin + width / 2 - fm.horizontalAdvance(xAxisTitle) / 2,
-                     height + topMargin + 45, xAxisTitle);
+                     height + topMargin + 100, xAxisTitle);
 
     // Draw the data line
     if (data.size() >= 2)
@@ -178,8 +193,14 @@ void ChartWidget::paintEvent(QPaintEvent* event)
             }
         }
 
-        // Draw legend
-        QRect legendRect(leftMargin + width - 100, topMargin + 10, 90, 30);
+        // Calculate legend box size based on text width
+        int legendTextWidth = fm.horizontalAdvance(legendData);
+        int legendBoxWidth = legendTextWidth + 40;  // Add padding for the line and spacing
+        int legendBoxHeight = 30;
+
+        // Draw legend with adjusted size
+        QRect legendRect(leftMargin + width - legendBoxWidth - 10, topMargin + 10,
+                         legendBoxWidth, legendBoxHeight);
         painter.fillRect(legendRect, Qt::white);
         painter.setPen(Qt::black);
         painter.drawRect(legendRect);

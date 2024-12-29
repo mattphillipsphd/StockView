@@ -15,7 +15,7 @@ Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), netwo
     ui->TickerSymbols_LineEdit->setText("VUG");
     ui->FileSelect_LineEdit->setText("C:/Users/mattp/Documents/Qt/Projects/StockView/python/SimpleAnalysis.py");
     ui->InputArguments_LineEdit->setText("VUG");
-    deleteTempFiles();
+//    deleteTempFiles();
 }
 
 Window::~Window()
