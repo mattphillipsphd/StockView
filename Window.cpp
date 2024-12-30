@@ -5,7 +5,11 @@
 #include <QGraphicsScene>
 #include "PythonLauncher.hpp"
 #include "Window.hpp"
+
 #include "./ui_window.h"
+#include "QtUtils.hpp"
+
+using namespace sv;
 
 Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), networkManager(new QNetworkAccessManager(this))
 {
@@ -37,9 +41,17 @@ void Window::on_Run_Button_clicked()
 
     QStringList arguments;
 
+    QStringList tickerSymbols = ui->TickerSymbols_LineEdit->text().split(';', Qt::SkipEmptyParts);
+    QStringList extraArguments = ui->InputArguments_LineEdit->text().split(' ', Qt::SkipEmptyParts);
     arguments << tempFilePath;
-    arguments << ui->TickerSymbols_LineEdit->text().split(';', Qt::SkipEmptyParts);
-    arguments << ui->InputArguments_LineEdit->text().split(' ', Qt::SkipEmptyParts);
+    arguments += tickerSymbols;
+    arguments += extraArguments;
+
+    QString wslCommand = "python " + sv::convertToWslPath(scriptPath) + " " + sv::convertToWslPath(tempFilePath);
+    wslCommand += " " + tickerSymbols.join(' ');
+    wslCommand += " " + extraArguments.join(' ');
+    ui->ConsoleOutput_TextBrowser->append("WSL command: \n" + wslCommand + "\n\n");
+    ui->ConsoleOutput_TextBrowser->update();
 
     QSharedPointer<PythonLauncher> launcher = PythonLauncher::create(scriptPath, arguments);
 
@@ -51,7 +63,7 @@ void Window::on_Run_Button_clicked()
 
     QString outputString = launcher->getOutput();
 
-    ui->ConsoleOutput_TextBrowser->setText(outputString);
+    ui->ConsoleOutput_TextBrowser->append(outputString);
 
     if (exitCode != 0)
     {
