@@ -82,7 +82,7 @@
       <item>
        <widget class="QLabel" name="InputArguments">
         <property name="text">
-         <string>Input arguments</string>
+         <string>Additional input arguments</string>
         </property>
        </widget>
       </item>

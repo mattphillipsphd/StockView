@@ -2,6 +2,7 @@
 #define WINDOW_HPP
 
 #include "ui_window.h"
+#include <QDir>
 #include <QMainWindow>
 #include <QGraphicsScene>
 #include <QGraphicsLineItem>
@@ -19,6 +20,7 @@
 #include <QPointF>
 #include <QDebug>
 #include <QTemporaryFile>
+#include <QProcessEnvironment>
 
 QT_BEGIN_NAMESPACE
 
@@ -40,7 +42,8 @@ public:
     ~Window();
 
     // Create a data structure to hold both points and metadata
-    struct StockDataResult {
+    struct StockDataResult
+    {
         QVector<QPointF> points;
         QMap<QString, QString> labels;
     };
@@ -118,7 +121,19 @@ private:
 
     void fetchStockData(const QString &symbol)
     {
-        QString apiKey = "RZDJD774MDM8F478";
+
+        // Get the system environment
+        const QMap<QString, QString> env = loadEnvFile();
+
+        // Read the API key
+        QString apiKey = env.value("API_KEY", "default_value_if_not_set");
+//        env.
+        // Check if it exists
+         if (env.contains("API_KEY"))
+            // Use the API key
+            qDebug() << "API Key:" << apiKey;
+        else
+            ui->ConsoleOutput_TextBrowser->setText("API Key not found in environment");
         QString url = QString("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=%1&apikey=%2").arg(symbol, apiKey);
 
         QNetworkRequest request{ QUrl{url} };
@@ -176,6 +191,58 @@ private:
         return result;
     }
 
+    void generateWSLCommand() const
+    {
+
+    }
+
+    QString findProjectRoot()
+    {
+        QDir dir(QCoreApplication::applicationDirPath());
+
+        // Keep going up until we find a marker file (like .env or .git)
+        while (!dir.exists(".env") && !dir.exists(".git")) {
+            if (!dir.cdUp()) {
+                // Reached root without finding marker
+                return QString();
+            }
+        }
+
+        return dir.absolutePath();
+    }
+
+    QMap<QString, QString> loadEnvFile()
+    {
+        QMap<QString, QString> envVars;
+        QString path = findProjectRoot();
+        QFile file(path + QDir::separator() + "stockview.env");
+
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                QString line = in.readLine().trimmed();
+
+                // Skip empty lines and comments
+                if (line.isEmpty() || line.startsWith('#'))
+                    continue;
+
+                // Split on first '=' only
+                int index = line.indexOf('=');
+                if (index > 0) {
+                    QString key = line.left(index).trimmed();
+                    QString value = line.mid(index + 1).trimmed();
+
+                    // Remove quotes if present
+                    if (value.startsWith('"') && value.endsWith('"'))
+                        value = value.mid(1, value.length() - 2);
+
+                    envVars[key] = value;
+                }
+            }
+            file.close();
+        }
+        return envVars;
+    }
 };
 
 #endif // WINDOW_HPP

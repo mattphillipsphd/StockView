@@ -14,7 +14,7 @@ Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), netwo
     scene = new QGraphicsScene(this);
     ui->TickerSymbols_LineEdit->setText("VUG");
     ui->FileSelect_LineEdit->setText("C:/Users/mattp/Documents/Qt/Projects/StockView/python/SimpleAnalysis.py");
-    ui->InputArguments_LineEdit->setText("VUG");
+    ui->InputArguments_LineEdit->setText("");
 //    deleteTempFiles();
 }
 
@@ -38,13 +38,14 @@ void Window::on_Run_Button_clicked()
     QStringList arguments;
 
     arguments << tempFilePath;
-    arguments << ui->InputArguments_LineEdit->text().split(' ');
+    arguments << ui->TickerSymbols_LineEdit->text().split(';', Qt::SkipEmptyParts);
+    arguments << ui->InputArguments_LineEdit->text().split(' ', Qt::SkipEmptyParts);
 
     QSharedPointer<PythonLauncher> launcher = PythonLauncher::create(scriptPath, arguments);
 
     QString environmentPath = "C:/Users/mattp/Documents/StockView/StockAnalyzerEnvironment/";
 
-    launcher->addVirtualEnvironment(environmentPath, {"numpy", "pandas"});
+    launcher->addVirtualEnvironment(environmentPath, {"numpy", "pandas", "scipy"});
 
     int exitCode = launcher->run();
 
