@@ -121,20 +121,26 @@ private:
 
     void fetchStockData(const QString &symbol)
     {
-
-        // Get the system environment
         const QMap<QString, QString> env = loadEnvFile();
 
-        // Read the API key
-        QString apiKey = env.value("API_KEY", "default_value_if_not_set");
-//        env.
-        // Check if it exists
-         if (env.contains("API_KEY"))
-            // Use the API key
-            qDebug() << "API Key:" << apiKey;
+        const QString apiKey = env.value("API_KEY", "default_value_if_not_set");
+        const QString source_url = env.value("URL", "default_value_if_not_set");
+        const QString function = env.value("FUNCTION", "default_value_if_not_set");
+
+        if (env.contains("API_KEY"))
+            qDebug() << "API_KEY:" << apiKey;
         else
-            ui->ConsoleOutput_TextBrowser->setText("API Key not found in environment");
-        QString url = QString("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=%1&apikey=%2").arg(symbol, apiKey);
+            ui->ConsoleOutput_TextBrowser->setText("API_KEY not found in environment");
+        if (env.contains("URL"))
+            qDebug() << "URL:" << apiKey;
+        else
+            ui->ConsoleOutput_TextBrowser->setText("URL not found in environment");
+        if (env.contains("FUNCTION"))
+            qDebug() << "FUNCTION:" << apiKey;
+        else
+            ui->ConsoleOutput_TextBrowser->setText("FUNCTION not found in environment");
+        QString url = QString("%1/query?function=%2&symbol=%3&apikey=%4").arg(
+            source_url, function, symbol, apiKey);
 
         QNetworkRequest request{ QUrl{url} };
         networkManager->get(request);
@@ -189,11 +195,6 @@ private:
         };
 
         return result;
-    }
-
-    void generateWSLCommand() const
-    {
-
     }
 
     QString findProjectRoot()
