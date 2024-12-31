@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QGraphicsScene>
+#include <QRegularExpression>
 #include "PythonLauncher.hpp"
 #include "Window.hpp"
 
@@ -64,6 +65,17 @@ void Window::on_Run_Button_clicked()
     QString outputString = launcher->getOutput();
 
     ui->ConsoleOutput_TextBrowser->append(outputString);
+
+    const QStringList toks = outputString.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+    const bool hasEstimate = toks.contains("Estimate:") && toks.at( toks.indexOf("Estimate:")+1 ) == "Yes";
+    if (hasEstimate)
+    {
+        const QString outPath = *std::find_if(toks.begin(), toks.end(),
+                                              [](const QString& str){ return str.startsWith("C:"); });
+
+        sv::StockDataResult estimate = readStockData(outPath, tickerSymbols.at(0));
+        ui->StockView_Chart->setAllData(estimate);
+    }
 
     if (exitCode != 0)
     {

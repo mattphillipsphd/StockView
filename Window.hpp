@@ -22,6 +22,8 @@
 #include <QTemporaryFile>
 #include <QProcessEnvironment>
 
+#include "QtUtils.hpp"
+
 QT_BEGIN_NAMESPACE
 
 namespace Ui
@@ -40,13 +42,6 @@ public:
 
     Window(QWidget* parent = nullptr);
     ~Window();
-
-    // Create a data structure to hold both points and metadata
-    struct StockDataResult
-    {
-        QVector<QPointF> points;
-        QMap<QString, QString> labels;
-    };
 
     void deleteTempFiles() const;
 
@@ -69,7 +64,7 @@ private slots:
         reply->deleteLater();
 
         // Parse the data and get labels
-        StockDataResult result = parseStockData(response);
+        sv::StockDataResult result = parseStockData(response);
 
         if (result.points.isEmpty())
         {
@@ -146,9 +141,9 @@ private:
         networkManager->get(request);
     }
 
-    StockDataResult parseStockData(const QByteArray& jsonData)
+    sv::StockDataResult parseStockData(const QByteArray& jsonData)
     {
-        StockDataResult result;
+        sv::StockDataResult result;
         QJsonDocument doc = QJsonDocument::fromJson(jsonData);
 
         if (!doc.isObject())
@@ -194,6 +189,46 @@ private:
             {"title", symbol + " Daily Stock Prices"}
         };
 
+        return result;
+    }
+
+    sv::StockDataResult readStockData(const QString& filename, const QString& symbol)
+    {
+        sv::StockDataResult result;
+        result.labels = {
+            {"x_axis", "Date"},
+            {"y_axis", "Price (USD)"},
+            {"legend", "est. " + symbol + " Stock Price"},
+            {"title", symbol + " Daily Stock Prices"}
+        };
+
+        QFile file(filename);
+
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            return result;
+
+        QTextStream in(&file);
+
+        // Skip header line
+        QString header = in.readLine();
+
+        // Read data lines
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            QStringList fields = line.split(',');
+
+            if (fields.size() >= 2) {
+                bool okTime, okPrice;
+                double timestamp = fields[0].toDouble(&okTime);
+                double price = fields[1].toDouble(&okPrice);
+
+                if (okTime && okPrice) {
+                    result.points.append(QPointF(timestamp, price));
+                }
+            }
+        }
+
+        file.close();
         return result;
     }
 
@@ -243,6 +278,11 @@ private:
             file.close();
         }
         return envVars;
+    }
+
+    void graphEstimate(const QString& estimatePath)
+    {
+
     }
 };
 

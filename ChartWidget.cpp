@@ -11,9 +11,27 @@ ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent)
     setAttribute(Qt::WA_OpaquePaintEvent);
 }
 
+void ChartWidget::setAllData(const sv::StockDataResult& result)
+{
+    const auto& labels = result.labels;
+    if (this->rawData.empty())
+        setData(result.points, labels);
+    else
+        appendData(result.points);
+    setAxisTitles( labels["x_axis"], labels["y_axis"] );
+    setTitle( labels["title"] );
+    setLegendData( labels["legend"] );
+}
+
+void ChartWidget::appendData(const QVector<QPointF>& data)
+{
+    estimateData = data;
+    update();
+}
+
 void ChartWidget::setData(const QVector<QPointF>& data, const QMap<QString, QString>& labelData)
 {
-    this->data = data;
+    rawData = data;
     setAxisTitles(labelData.value("x_axis"), labelData.value("y_axis"));
     setLegendData(labelData.value("legend"));
     update();
@@ -45,38 +63,14 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // Adjusted margins for tighter layout
-    double leftMargin = 70;     // Space for y-axis labels
-    double rightMargin = 50;
-    double topMargin = 50;      // Space for title
-    double bottomMargin = 130;  // Reduced to eliminate excess whitespace
-
-    double width = this->width() - (leftMargin + rightMargin);
-    double height = this->height() - (topMargin + bottomMargin);
-
-    if (width <= 0 || height <= 0 || data.isEmpty())
+    if (rawData.isEmpty())
         return;
+
+    chartSpec = ChartSpec{(double)this->width(), (double)this->height()};
+    chartSpec.setScale( estimateData.empty() ? rawData : estimateData );
 
     // Draw background
     painter.fillRect(rect(), Qt::white);
-
-    // Calculate data ranges
-    double minX = data.first().x();
-    double maxX = data.last().x();
-    double minY = data.first().y();
-    double maxY = data.first().y();
-
-    for (const QPointF& point : data)
-    {
-        if (point.y() < minY) minY = point.y();
-        if (point.y() > maxY) maxY = point.y();
-    }
-
-    if (minX == maxX) { minX -= 1; maxX += 1; }
-    if (minY == maxY) { minY -= 1; maxY += 1; }
-
-    double xScale = width / (maxX - minX);
-    double yScale = height / (maxY - minY);
 
     // Draw chart title
     QFont titleFont = painter.font();
@@ -88,8 +82,8 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     // Draw axes
     QPen axisPen(Qt::black, 2);
     painter.setPen(axisPen);
-    painter.drawLine(leftMargin, topMargin + height, leftMargin + width, topMargin + height);  // X axis
-    painter.drawLine(leftMargin, topMargin, leftMargin, topMargin + height);                   // Y axis
+    painter.drawLine(chartSpec.leftMargin, chartSpec.topMargin + chartSpec.height, chartSpec.leftMargin + chartSpec.width, chartSpec.topMargin + chartSpec.height);  // X axis
+    painter.drawLine(chartSpec.leftMargin, chartSpec.topMargin, chartSpec.leftMargin, chartSpec.topMargin + chartSpec.height);                   // Y axis
 
     // Draw grid
     QPen gridPen(Qt::lightGray, 1, Qt::DotLine);
@@ -110,17 +104,17 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     // X-axis ticks and labels
     for (int i = 0; i <= numXTicks; ++i)
     {
-        double x = leftMargin + i * (width / numXTicks);
+        double x = chartSpec.leftMargin + i * (chartSpec.width / numXTicks);
         // Grid line
         painter.setPen(gridPen);
-        painter.drawLine(x, topMargin, x, topMargin + height);
+        painter.drawLine(x, chartSpec.topMargin, x, chartSpec.topMargin + chartSpec.height);
 
         // Tick mark
         painter.setPen(tickPen);
-        painter.drawLine(x, topMargin + height - 5, x, topMargin + height + 5);
+        painter.drawLine(x, chartSpec.topMargin + chartSpec.height - 5, x, chartSpec.topMargin + chartSpec.height + 5);
 
         // Convert UNIX timestamp to date string
-        double timestamp = minX + i * (maxX - minX) / numXTicks;
+        double timestamp = chartSpec.minX + i * (chartSpec.maxX - chartSpec.minX) / numXTicks;
         QDateTime dateTime;
         dateTime.setSecsSinceEpoch(static_cast<qint64>(timestamp));
         QString label = dateTime.toString("yyyy-MM-dd");
@@ -129,7 +123,7 @@ void ChartWidget::paintEvent(QPaintEvent* event)
         painter.save();
 
         // Position labels closer to the axis while still avoiding overlap
-        painter.translate(x, topMargin + height + 75);
+        painter.translate(x, chartSpec.topMargin + chartSpec.height + 75);
         painter.rotate(-90);
 
         // Draw rotated text
@@ -142,56 +136,36 @@ void ChartWidget::paintEvent(QPaintEvent* event)
     // Y-axis ticks and labels (unchanged)
     for (int i = 0; i <= numYTicks; ++i)
     {
-        double y = topMargin + height - i * (height / numYTicks);
+        double y = chartSpec.topMargin + chartSpec.height - i * (chartSpec.height / numYTicks);
         // Grid line
         painter.setPen(gridPen);
-        painter.drawLine(leftMargin, y, leftMargin + width, y);
+        painter.drawLine(chartSpec.leftMargin, y, chartSpec.leftMargin + chartSpec.width, y);
 
         // Tick mark
         painter.setPen(tickPen);
-        painter.drawLine(leftMargin - 5, y, leftMargin + 5, y);
+        painter.drawLine(chartSpec.leftMargin - 5, y, chartSpec.leftMargin + 5, y);
 
-        double value = minY + i * (maxY - minY) / numYTicks;
+        double value = chartSpec.minY + i * (chartSpec.maxY - chartSpec.minY) / numYTicks;
         QString label = QString::number(value, 'f', 1);
         int labelWidth = fm.horizontalAdvance(label);
-        painter.drawText(leftMargin - labelWidth - 10, y + fm.height() / 4, label);
+        painter.drawText(chartSpec.leftMargin - labelWidth - 10, y + fm.height() / 4, label);
     }
 
     // Draw axis titles
     painter.save();
-    painter.translate(15, height / 2 + topMargin);
+    painter.translate(15, chartSpec.height / 2 + chartSpec.topMargin);
     painter.rotate(-90);
     painter.drawText(0, 0, yAxisTitle);
     painter.restore();
 
-    painter.drawText(leftMargin + width / 2 - fm.horizontalAdvance(xAxisTitle) / 2,
-                     height + topMargin + 100, xAxisTitle);
+    painter.drawText(chartSpec.leftMargin + chartSpec.width / 2 - fm.horizontalAdvance(xAxisTitle) / 2,
+                     chartSpec.height + chartSpec.topMargin + 100, xAxisTitle);
 
     // Draw the data line
-    if (data.size() >= 2)
+    if (rawData.size() >= 2)
     {
-        QPen chartPen(Qt::blue, 2);
-        painter.setPen(chartPen);
-
-        QPointF previousPoint;
-        bool firstPoint = true;
-
-        for (const QPointF& point : data)
-        {
-            double x = leftMargin + (point.x() - minX) * xScale;
-            double y = topMargin + height - (point.y() - minY) * yScale;
-
-            if (firstPoint)
-            {
-                previousPoint = QPointF(x, y);
-                firstPoint = false;
-            }
-            else
-            {
-                painter.drawLine(previousPoint, QPointF(x, y));
-                previousPoint = QPointF(x, y);
-            }
-        }
+        QPen chartPen = drawCurve(painter, Qt::red, estimateData, chartSpec);
+        drawCurve(painter, Qt::blue, rawData, chartSpec);
 
         // Calculate legend box size based on text width
         int legendTextWidth = fm.horizontalAdvance(legendData);
@@ -199,7 +173,7 @@ void ChartWidget::paintEvent(QPaintEvent* event)
         int legendBoxHeight = 30;
 
         // Draw legend with adjusted size
-        QRect legendRect(leftMargin + width - legendBoxWidth - 10, topMargin + 10,
+        QRect legendRect(chartSpec.leftMargin + chartSpec.width - legendBoxWidth - 10, chartSpec.topMargin + 10,
                          legendBoxWidth, legendBoxHeight);
         painter.fillRect(legendRect, Qt::white);
         painter.setPen(Qt::black);
@@ -214,4 +188,33 @@ void ChartWidget::paintEvent(QPaintEvent* event)
         painter.setPen(Qt::black);
         painter.drawText(legendRect.left() + 30, legendRect.center().y() + fm.height() / 3, legendData);
     }
+}
+
+QPen ChartWidget::drawCurve(QPainter& painter, Qt::GlobalColor penColor, const QVector<QPointF>& data,
+                            const ChartSpec& chartSpec)
+{
+    QPen chartPen(penColor, 2);
+    painter.setPen(chartPen);
+
+    QPointF previousPoint;
+    bool firstPoint = true;
+
+    for (const QPointF& point : data)
+    {
+        const double x = chartSpec.leftMargin + (point.x() - chartSpec.minX) * chartSpec.xScale;
+        const double y = chartSpec.topMargin + chartSpec.height - (point.y() - chartSpec.minY) * chartSpec.yScale;
+
+        if (firstPoint)
+        {
+            previousPoint = QPointF(x, y);
+            firstPoint = false;
+        }
+        else
+        {
+            painter.drawLine(previousPoint, QPointF(x, y));
+            previousPoint = QPointF(x, y);
+        }
+    }
+
+    return chartPen;
 }

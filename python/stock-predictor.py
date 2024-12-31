@@ -106,6 +106,7 @@ Model Parameters:
 - Volatility (sigma): {sigma:.6f}
 - Detected Trend: {trend*100:.2f}% per period
 
+Estimate: Yes
 Output saved to: {output_path}
 """
     

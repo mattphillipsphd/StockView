@@ -8,7 +8,15 @@
 namespace sv
 {
 
-QString convertToWslPath(const QString& windowsPath) {
+// Create a data structure to hold both points and metadata
+struct StockDataResult
+{
+    QVector<QPointF> points;
+    QMap<QString, QString> labels;
+};
+
+inline QString convertToWslPath(const QString& windowsPath)
+{
     // First, normalize the path to use forward slashes
     QString normalized = QDir::fromNativeSeparators(windowsPath);
 
