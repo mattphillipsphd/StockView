@@ -29,6 +29,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         PythonLauncher.hpp
         ChartWidget.hpp ChartWidget.cpp
         QtUtils.hpp
+        QueryBuilder.hpp
     )
 
 include_directories(${PROJECT_SOURCE_DIR})

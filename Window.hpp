@@ -23,6 +23,7 @@
 #include <QProcessEnvironment>
 
 #include "QtUtils.hpp"
+#include "QueryBuilder.hpp"
 
 QT_BEGIN_NAMESPACE
 
@@ -119,7 +120,7 @@ private:
         const QMap<QString, QString> env = loadEnvFile();
 
         const QString apiKey = env.value("API_KEY", "default_value_if_not_set");
-        const QString source_url = env.value("URL", "default_value_if_not_set");
+        const QString sourceUrl = env.value("URL", "default_value_if_not_set");
         const QString function = env.value("FUNCTION", "default_value_if_not_set");
 
         if (env.contains("API_KEY"))
@@ -127,17 +128,22 @@ private:
         else
             ui->ConsoleOutput_TextBrowser->setText("API_KEY not found in environment");
         if (env.contains("URL"))
-            qDebug() << "URL:" << apiKey;
+            qDebug() << "URL:" << sourceUrl;
         else
             ui->ConsoleOutput_TextBrowser->setText("URL not found in environment");
         if (env.contains("FUNCTION"))
-            qDebug() << "FUNCTION:" << apiKey;
+            qDebug() << "FUNCTION:" << function;
         else
             ui->ConsoleOutput_TextBrowser->setText("FUNCTION not found in environment");
-        QString url = QString("%1/query?function=%2&symbol=%3&apikey=%4").arg(
-            source_url, function, symbol, apiKey);
 
-        QNetworkRequest request{ QUrl{url} };
+        QueryBuilder& queryBuilder = QueryBuilder::instance()
+            .setAnalyticsUrl(sourceUrl)
+            .setFunction(function)
+            .setTickerSymbol(symbol)
+            .setApiKey(apiKey);
+        QString query = queryBuilder.build();
+
+        QNetworkRequest request{ QUrl{query} };
         networkManager->get(request);
     }
 
