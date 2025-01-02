@@ -7,41 +7,40 @@
 class QueryBuilder
 {
 public:
-    static QueryBuilder& instance()
+    static QueryBuilder& create()
     {
-        if (!queryBuilder)
-            queryBuilder = new QueryBuilder();
+        QueryBuilder* queryBuilder = new QueryBuilder();
         return *queryBuilder;
     }
 
-    QueryBuilder& setApiKey(const QString& apiKey) const
+    QueryBuilder& setApiKey(const QString& apiKey)
     {
-        queryBuilder->apiKey = apiKey;
-        return *queryBuilder;
+        this->apiKey = apiKey;
+        return *this;
     }
 
-    QueryBuilder& setAnalyticsUrl(const QString& analyticsUrl) const
+    QueryBuilder& setAnalyticsUrl(const QString& analyticsUrl)
     {
-        queryBuilder->analyticsUrl = analyticsUrl;
-        return *queryBuilder;
+        this->analyticsUrl = analyticsUrl;
+        return *this;
     }
 
-    QueryBuilder& setJsonFormat(const QJsonDocument::JsonFormat& jsonFormat) const
+    QueryBuilder& setJsonFormat(const QJsonDocument::JsonFormat& jsonFormat)
     {
-        queryBuilder->jsonFormat = jsonFormat;
-        return *queryBuilder;
+        this->jsonFormat = jsonFormat;
+        return *this;
     }
 
-    QueryBuilder& setFunction(const QString& function) const
+    QueryBuilder& setFunction(const QString& function)
     {
-        queryBuilder->function = function;
-        return *queryBuilder;
+        this->function = function;
+        return *this;
     }
 
-    QueryBuilder& setTickerSymbol(const QString& tickerSymbol) const
+    QueryBuilder& setTickerSymbol(const QString& tickerSymbol)
     {
-        queryBuilder->tickerSymbol = tickerSymbol;
-        return *queryBuilder;
+        this->tickerSymbol = tickerSymbol;
+        return *this;
     }
 
     QString build() const
@@ -52,16 +51,17 @@ public:
     }
 
 private:
-    static QueryBuilder* queryBuilder;
-
     QueryBuilder() = default;
+    QueryBuilder(const QueryBuilder&) = delete;
+    QueryBuilder(QueryBuilder&&) = delete;
+    QueryBuilder& operator=(const QueryBuilder&) = delete;
+    QueryBuilder&& operator=(QueryBuilder&&) = delete;
+
     QString apiKey;
     QString analyticsUrl;
     QString tickerSymbol;
     QString function;
     QJsonDocument::JsonFormat jsonFormat;
 };
-
-inline QueryBuilder* QueryBuilder::queryBuilder = nullptr;
 
 #endif // QUERYBUILDER_HPP

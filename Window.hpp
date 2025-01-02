@@ -22,6 +22,7 @@
 #include <QTemporaryFile>
 #include <QProcessEnvironment>
 
+#include "DataFetcher.hpp"
 #include "QtUtils.hpp"
 #include "QueryBuilder.hpp"
 
@@ -34,10 +35,10 @@ namespace Ui
 
 QT_END_NAMESPACE
 
-
 class Window : public QMainWindow
 {
     Q_OBJECT
+    friend class DataFetcher;
 
 public:
 
@@ -111,40 +112,13 @@ private slots:
 private:
 
     Ui::Window* ui;
-    QNetworkAccessManager* networkManager;
     QGraphicsScene* scene;
     QString tempFilePath;
+    DataFetcher dataFetcher;
 
     void fetchStockData(const QString &symbol)
     {
-        const QMap<QString, QString> env = loadEnvFile();
-
-        const QString apiKey = env.value("API_KEY", "default_value_if_not_set");
-        const QString sourceUrl = env.value("URL", "default_value_if_not_set");
-        const QString function = env.value("FUNCTION", "default_value_if_not_set");
-
-        if (env.contains("API_KEY"))
-            qDebug() << "API_KEY:" << apiKey;
-        else
-            ui->ConsoleOutput_TextBrowser->setText("API_KEY not found in environment");
-        if (env.contains("URL"))
-            qDebug() << "URL:" << sourceUrl;
-        else
-            ui->ConsoleOutput_TextBrowser->setText("URL not found in environment");
-        if (env.contains("FUNCTION"))
-            qDebug() << "FUNCTION:" << function;
-        else
-            ui->ConsoleOutput_TextBrowser->setText("FUNCTION not found in environment");
-
-        QueryBuilder& queryBuilder = QueryBuilder::instance()
-            .setAnalyticsUrl(sourceUrl)
-            .setFunction(function)
-            .setTickerSymbol(symbol)
-            .setApiKey(apiKey);
-        QString query = queryBuilder.build();
-
-        QNetworkRequest request{ QUrl{query} };
-        networkManager->get(request);
+       dataFetcher.MakeQuery(symbol);
     }
 
     sv::StockDataResult parseStockData(const QByteArray& jsonData)
@@ -238,55 +212,7 @@ private:
         return result;
     }
 
-    QString findProjectRoot()
-    {
-        QDir dir(QCoreApplication::applicationDirPath());
-
-        // Keep going up until we find a marker file (like .env or .git)
-        while (!dir.exists(".env") && !dir.exists(".git")) {
-            if (!dir.cdUp()) {
-                // Reached root without finding marker
-                return QString();
-            }
-        }
-
-        return dir.absolutePath();
-    }
-
-    QMap<QString, QString> loadEnvFile()
-    {
-        QMap<QString, QString> envVars;
-        QString path = findProjectRoot();
-        QFile file(path + QDir::separator() + "stockview.env");
-
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            while (!in.atEnd()) {
-                QString line = in.readLine().trimmed();
-
-                // Skip empty lines and comments
-                if (line.isEmpty() || line.startsWith('#'))
-                    continue;
-
-                // Split on first '=' only
-                int index = line.indexOf('=');
-                if (index > 0) {
-                    QString key = line.left(index).trimmed();
-                    QString value = line.mid(index + 1).trimmed();
-
-                    // Remove quotes if present
-                    if (value.startsWith('"') && value.endsWith('"'))
-                        value = value.mid(1, value.length() - 2);
-
-                    envVars[key] = value;
-                }
-            }
-            file.close();
-        }
-        return envVars;
-    }
-
-    void graphEstimate(const QString& estimatePath)
+   void graphEstimate(const QString& estimatePath)
     {
 
     }

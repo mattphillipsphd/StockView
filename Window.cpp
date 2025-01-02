@@ -12,7 +12,7 @@
 
 using namespace sv;
 
-Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), networkManager(new QNetworkAccessManager(this))
+Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window)
 {
     ui->setupUi(this);
 
@@ -21,6 +21,11 @@ Window::Window(QWidget* parent) : QMainWindow(parent), ui(new Ui::Window), netwo
     ui->FileSelect_LineEdit->setText("C:/Users/mattp/Documents/Qt/Projects/StockView/python/SimpleAnalysis.py");
     ui->InputArguments_LineEdit->setText("");
 //    deleteTempFiles();
+
+    dataFetcher.setNetworkManager( new QNetworkAccessManager{this} );
+    connect(dataFetcher.getNetworkManager(), &QNetworkAccessManager::finished,
+            this, &Window::OnDataReceived);
+
 }
 
 Window::~Window()
@@ -86,9 +91,6 @@ void Window::on_Run_Button_clicked()
 
 void Window::on_GraphStocks_Button_clicked()
 {
-    connect(networkManager, &QNetworkAccessManager::finished,
-            this, &Window::OnDataReceived);
-
     const auto stock = ui->TickerSymbols_LineEdit->text();
     fetchStockData(stock);
 }
