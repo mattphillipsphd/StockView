@@ -7,10 +7,9 @@
 class QueryBuilder
 {
 public:
-    static QueryBuilder& create()
+    static QueryBuilder create()
     {
-        QueryBuilder* queryBuilder = new QueryBuilder();
-        return *queryBuilder;
+        return QueryBuilder();
     }
 
     QueryBuilder& setApiKey(const QString& apiKey)
@@ -52,10 +51,10 @@ public:
 
 private:
     QueryBuilder() = default;
-    QueryBuilder(const QueryBuilder&) = delete;
-    QueryBuilder(QueryBuilder&&) = delete;
-    QueryBuilder& operator=(const QueryBuilder&) = delete;
-    QueryBuilder&& operator=(QueryBuilder&&) = delete;
+    QueryBuilder(const QueryBuilder&) = default;
+    QueryBuilder(QueryBuilder&&) = default;
+    QueryBuilder& operator=(const QueryBuilder&) = default;
+    QueryBuilder& operator=(QueryBuilder&&) = default;
 
     QString apiKey;
     QString analyticsUrl;

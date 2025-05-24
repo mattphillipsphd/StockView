@@ -39,8 +39,8 @@ public:
 
     void MakeQuery(const QString& tickerSymbol) const
     {
-        QueryBuilder& queryBuilder = QueryBuilder::create()
-        .setAnalyticsUrl(sourceUrl)
+        QueryBuilder queryBuilder = QueryBuilder::create()
+            .setAnalyticsUrl(sourceUrl)
             .setFunction(function)
             .setTickerSymbol(tickerSymbol)
             .setApiKey(apiKey);
